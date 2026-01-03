@@ -79,6 +79,8 @@ CONTENTS                                                      *vimtex-contents*
       Custom mappings                           |vimtex-toc-custom-maps|
     Denite/Unite source                         |vimtex-denite| / |vimtex-unite|
     fzf.vim integration                         |vimtex-fzf|
+    fzf-lua integration                         |vimtex-fzf-lua|
+    Snacks integration                          |vimtex-snacks|
   Compilation                                   |vimtex-compiler|
     Latexmk                                     |vimtex-compiler-latexmk|
     Latexrun                                    |vimtex-compiler-latexrun|
@@ -193,7 +195,8 @@ FEATURE OVERVIEW                                              *vimtex-features*
     `dsc`/`dse`/`ds$`/`dsd`
   - Change the surrounding command, environment or delimiter with
     `csc`/`cse`/`cs$`/`csd`
-  - Toggle starred command or environment with `tsc`/`tse`
+  - Toggle between complementary environments with `tse`
+  - Toggle starred command or environment with `tsc`/`tss`
   - Toggle inline and displaymath with `ts$`
   - Toggle between e.g. `()` and `\left(\right)` with `tsd`/`tsD`
   - Toggle (inline) fractions with `tsf`
@@ -222,7 +225,7 @@ of its key features. Windows users should also read |vimtex-faq-windows|.
 
 Vim version ~
                                                          *vimtex_version_check*
-  VimTeX requires Vim version 8.2.3995 or neovim version 0.9.5. It will not
+  VimTeX requires Vim version 9.1 or neovim version 0.10. It will not
   load for older versions, unless one adds >vim
 
     let g:vimtex_version_check = 0
@@ -467,7 +470,7 @@ Directory scan ~
   3. The expanded content contains `\begin{document}`.
 
   Notice that the main file itself does not need to contain the
-  `\documentclass` line and `\begin{docment}`, since these can stem from
+  `\documentclass` line and `\begin{document}`, since these can stem from
   included `.tex` files. The option |g:vimtex_include_indicators| is used by
   the parser to specify commands that include `.tex` files for the recursive
   expansion.
@@ -846,6 +849,7 @@ This feature is explained in more detail later, see |vimtex-imaps|.
    <localleader>lr  |<plug>(vimtex-reverse-search)|                 `n`
    <localleader>ll  |<plug>(vimtex-compile)|                        `n`
    <localleader>lL  |<plug>(vimtex-compile-selected)|               `nx`
+   <localleader>lS  |<plug>(vimtex-compile-ss)|                     `n`
    <localleader>lk  |<plug>(vimtex-stop)|                           `n`
    <localleader>lK  |<plug>(vimtex-stop-all)|                       `n`
    <localleader>le  |<plug>(vimtex-errors)|                         `n`
@@ -868,8 +872,10 @@ This feature is explained in more detail later, see |vimtex-imaps|.
    cs$              |<plug>(vimtex-env-change-math)|                `n`
    csd              |<plug>(vimtex-delim-change-math)|              `n`
    tsf              |<plug>(vimtex-cmd-toggle-frac)|                `nx`
+                    |<plug>(vimtex-cmd-toggle-star-agn)|            `n`
    tsc              |<plug>(vimtex-cmd-toggle-star)|                `n`
-   tse              |<plug>(vimtex-env-toggle-star)|                `n`
+   tss              |<plug>(vimtex-env-toggle-star)|                `n`
+   tse              |<plug>(vimtex-env-toggle)|                     `n`
    ts$              |<plug>(vimtex-env-toggle-math)|                `n`
    tsb              |<plug>(vimtex-env-toggle-break)|               `n`
    <F6>             |<plug>(vimtex-env-surround-line)|              `n`
@@ -909,10 +915,10 @@ This feature is explained in more detail later, see |vimtex-imaps|.
    ]R               |<plug>(vimtex-]R)|                             `nxo`
    [r               |<plug>(vimtex-[r)|                             `nxo`
    [R               |<plug>(vimtex-[R)|                             `nxo`
-   ]/               |<plug>(vimtex-]/|                              `nxo`
-   ]*               |<plug>(vimtex-]star|                           `nxo`
-   [/               |<plug>(vimtex-[/|                              `nxo`
-   [*               |<plug>(vimtex-[star|                           `nxo`
+   ]/               |<plug>(vimtex-]/)|                             `nxo`
+   ]*               |<plug>(vimtex-]star)|                          `nxo`
+   [/               |<plug>(vimtex-[/)|                             `nxo`
+   [*               |<plug>(vimtex-[star)|                          `nxo`
    K                |<plug>(vimtex-doc-package)|                    `n`
   --------------------------------------------------------------------- ~
 
@@ -1285,7 +1291,8 @@ OPTIONS                                                        *vimtex-options*
 
   command ~
     This is the command to run to start compilation. This can be any command,
-    and the command is run from the project root.
+    and the command is run from the project root. The command string will
+    substitute `@tex` with the path to the current project's main tex file.
 
   hooks ~
     Same as |g:vimtex_compiler_latexmk| / `hooks`.
@@ -1681,7 +1688,7 @@ OPTIONS                                                        *vimtex-options*
 
     `'vimtex#doc#handler#texdoc'`  Open documentation with local `texdoc`.
     Fallback                     Open documentation online through
-                                 http://texdoc.net/pkg/packagename.
+                                 http://texdoc.org/pkg/packagename.
 
   To use the local `texdoc`, set: >vim
 
@@ -1755,6 +1762,17 @@ OPTIONS                                                        *vimtex-options*
 
   Default: 0
 
+*g:vimtex_env_toggle_map*
+  Specify the toggle map for |<plug>(vimtex-env-toggle)|. You can use this to
+  change the desired toggle sequence.
+
+  Default value: >vim
+
+    let g:vimtex_env_toggle_map = {
+          \ 'itemize': 'enumerate',
+          \ 'enumerate': 'itemize',
+          \}
+
 *g:vimtex_env_toggle_math_map*
   Specify toggle map for |<plug>(vimtex-env-toggle-math)|. You can use this to
   change the desired toggle sequence.
@@ -1809,6 +1827,40 @@ OPTIONS                                                        *vimtex-options*
   can be configured with a list of patterns or similar, the patterns assume
   that one uses very magic regexes (see |\v|).
 
+  One may also customize the text that is displayed in a closed fold of a
+  given type by setting the `text` key to a |Funcref| (see |fold-foldtext| and
+  |Dictionary-function|). The function that the |Funcref| refers to takes two
+  arguments, the text of the current line and the fold level of the current
+  line, and it returns the text that will be displayed in a closed fold. For
+  example, the following configuration will set the text for a closed marker
+  fold to Vim's default: >vim
+
+    let g:vimtex_fold_types = {
+          \ 'markers' : {},
+          \}
+
+    function! g:vimtex_fold_types.markers.text(line, level) abort dict
+      return foldtext()
+    endfunction
+<
+  (Note that the |g:vimtex_fold_types| `marker` dictionary must be
+  initialized, even if you are not setting custom markers!)
+
+  Using a |literal-Dict| and a |lambda|, one could specify the same
+  configuration more concisely: >vim
+
+    let g:vimtex_fold_types = #{
+          \ markers : #{text : {line, level -> foldtext()}}
+          \}
+<
+  And for completeness, the following would work with a Lua based config: >lua
+
+    vim.g.vimtex_fold_types = {
+      markers = {
+        text = function(line, level) return vim.fn.foldtext() end
+      }
+    }
+<
   Each entry in |g:vimtex_fold_types| is combined with the corresponding entry
   of |g:vimtex_fold_types_defaults|. If there are conflicting entries, then
   |g:vimtex_fold_types| take precedence. This way, it is easy to customize
@@ -2148,7 +2200,7 @@ OPTIONS                                                        *vimtex-options*
   Note: This option is read during initialization of VimTeX, and so it must be
         set early. I.e., it can not be set in `after/ftplugin/tex.vim`.
 
-  Default value: `['input', 'include', 'includeonly']`
+  Default value: `['input', 'include']`
 
 *g:vimtex_include_search_enabled*
   VimTeX sets 'includeexpr' to recognize included files. If a file isn't found
@@ -2467,6 +2519,9 @@ OPTIONS                                                        *vimtex-options*
     fancy ~
       Some extra fancy replacements, e.g. `\item` --> ○.
 
+    texTabularChar ~
+      Conceal tabular line breaks, i.e. `\\` --> `⏎`.
+
     spacing ~
       Conceal spacing commands such as `\quad` and `\hspace{1em}` in both
       normal mode and math mode.
@@ -2517,6 +2572,7 @@ OPTIONS                                                        *vimtex-options*
           \ 'ligatures': 1,
           \ 'cites': 1,
           \ 'fancy': 1,
+          \ 'texTabularChar': 1,
           \ 'spacing': 1,
           \ 'greek': 1,
           \ 'math_bounds': 1,
@@ -2591,7 +2647,8 @@ OPTIONS                                                        *vimtex-options*
       Default: Undefined
       If this is defined, then it is used instead of `name` for matching the
       `cmdname` part. It is interpreted as a regular expression with "very
-      magic" mode activated (see |/\v|).
+      magic" mode activated (see |/\v|). For example, you need to use `>`
+      instead of `\>` for end-of-word atom (|\>|).
 
     mathmode ~
       Default: |v:false|
@@ -2661,13 +2718,14 @@ OPTIONS                                                        *vimtex-options*
 
   A couple of examples may be helpful: The first in the following list shows
   how to use bolded style on a custom vector macro such as `\vct{v}`. The
-  second example shows how to conceal `\R` with `ℝ`. The third example shows
-  how one may use the `nextgroup` key, and the fourth shows how to define
-  a command whose argument should not be spell checked. >vim
+  second example shows how to conceal `\R` with `ℝ`; notice the use of `cmdre`
+  and the end-of-word atom `>` to ensure it does not also match e.g. `\Re`.
+  The third example shows how one may use the `nextgroup` key, and the fourth
+  shows how to define a command whose argument should not be spell checked. >vim
 
     let g:vimtex_syntax_custom_cmds = [
           \ {'name': 'vct', 'mathmode': 1, 'argstyle': 'bold'},
-          \ {'name': 'R', 'mathmode': 1, 'concealchar': 'ℝ'},
+          \ {'name': 'R', 'cmdre': 'R>', 'mathmode': 1, 'concealchar': 'ℝ'},
           \ {'name': 'mathnote', 'mathmode': 1, 'nextgroup': 'texMathTextArg'},
           \ {'name': 'nospell', 'argspell': 0},
           \]
@@ -2677,7 +2735,7 @@ OPTIONS                                                        *vimtex-options*
 *g:vimtex_syntax_custom_cmds_with_concealed_delims*
   This option works exactly as |g:vimtex_syntax_custom_cmds|, except it is
   used specifically to add conceals with custom replacement characters for
-  single- and double-argument commands, e.g. >
+  single- and multi commands, e.g. >
 
     \cmd1{argument}
     \cmd2 {argument1} {argument2}
@@ -2691,7 +2749,7 @@ OPTIONS                                                        *vimtex-options*
 
     nargs ~
       Default: 1
-      Specify whether the command has 1 or 2 arguments.
+      Specify whether the command has 1 or more arguments.
 
     cchar_open ~
       Default: Undefined
@@ -2700,7 +2758,7 @@ OPTIONS                                                        *vimtex-options*
 
     cchar_mid ~
       Default: Undefined
-      Note: Only relevant if `nargs` = 2
+      Note: Only relevant if `nargs` > 1
       Specify single letter replacement for the mid (`}{`). If left
       undefined, the mid is fully concealed.
 
@@ -2793,7 +2851,7 @@ OPTIONS                                                        *vimtex-options*
 
     opts ~
       Default: Undefined
-      A string with additional options that will be passed to the `syntax
+      A string with additional options that will be passed to the `syntax`
       region` command (see |syn-region|).
 
     contains ~
@@ -2897,7 +2955,7 @@ OPTIONS                                                        *vimtex-options*
   Default value: 0
 
 *g:vimtex_syntax_packages*
-  A dictionary for package specific syntax configuration. Each key represent
+  A dictionary for package specific syntax configuration. Each key represents
   a single package and the values are themselves configuration dictionaries.
   All packages share the following options:
 
@@ -2926,6 +2984,10 @@ OPTIONS                                                        *vimtex-options*
     hyperref ~
       `conceal`  whether to enable conceal; enabled by default
 
+    robust_externalize ~
+      `presets`  list of presets and target syntaxes for things like
+                 `\begin{CacheMeCode}{bash} ... \end{CacheMeCode}`.
+
   Default: >vim
 
     let g:vimtex_syntax_packages = {
@@ -2933,6 +2995,15 @@ OPTIONS                                                        *vimtex-options*
           \ 'babel': {'conceal': 1},
           \ 'hyperref': {'conceal': 1},
           \ 'fontawesome5': {'conceal': 1},
+          \ 'robust_externalize': {
+          \   'presets': [
+          \     ['bash', 'bash'],
+          \     ['python', 'python'],
+          \     ['gnuplot', 'gnuplot'],
+          \     ['tikz', '@texClusterTikz'],
+          \     ['latex', 'TOP'],
+          \   ],
+          \ },
           \}
 
 *g:vimtex_texcount_custom_arg*
@@ -3440,6 +3511,13 @@ OPTIONS                                                        *vimtex-options*
 
   Default value: 1
 
+*g:vimtex_view_zathura_use_synctex*
+  Set to 0 or |v:false| to disable synctex for the Zathura viewer. This can be
+  useful e.g. for MacOS users who struggle with getting synctex to work
+  properly (see |vimtex-faq-zathura-macos|).
+
+  Default value: 1
+
 *g:vimtex_callback_progpath*
   The path to the Vim/neovim executable. This is currently passed to Zathura
   and Sioyek for use with synctex callbacks; see |vimtex-view-zathura| and
@@ -3514,10 +3592,13 @@ COMMANDS                                                      *vimtex-commands*
 
                                              *:VimtexCompile*
                                              *<plug>(vimtex-compile)*
-:VimtexCompile [opts]     If the compiler supports and is set to run in
+:VimtexCompile[!] [opts]  If the compiler supports and is set to run in
                           continuous mode, then this command works as
                           a compiler toggle. If not, this command will run
                           a single shot compilation.
+
+                          If [!] is given, the command will only start
+                          compilation, never stop it.
 
                           Arguments to the command will be passed on as options
                           when starting the compiler. This allows the user to
@@ -3729,10 +3810,21 @@ MAP DEFINITIONS                                               *vimtex-mappings*
   we try to detect the surrounding fraction command or inline fraction
   expression. If successful, the detected fraction is toggled.
 
+*<plug>(vimtex-env-toggle)*
+  Toggle environment, e.g. between `enumerate` and `itemize`. The toggle
+  sequence/map can be customized with |g:vimtex_env_toggle_map|.
+
 *<plug>(vimtex-cmd-toggle-star)*
 *<plug>(vimtex-env-toggle-star)*
-  Toggle starred command/environment.
+  Toggle starred command or environment.
 
+*<plug>(vimtex-cmd-toggle-star-agn)*
+  Toggle starred command or environment, whichever is closest to the cursor.
+  This is not mapped by default. Some users may prefer the combined behaviour
+  and may want to map it, e.g. like this in their personal `ftplugin/tex.vim`: >vim
+
+    nmap tss <plug>(vimtex-cmd-toggle-star-agn)
+<
 *<plug>(vimtex-env-toggle-math)*
   Toggle between inline math and displayed math, e.g.: >
 
@@ -3824,19 +3916,19 @@ MAP DEFINITIONS                                               *vimtex-mappings*
   Find matching pair.
 
 *<plug>(vimtex-]])*
-  go to [count] next end of a section.
-  |exclusive| motion.
-
-*<plug>(vimtex-][)*
   go to [count] next beginning of a section.
   |exclusive| motion.
 
-*<plug>(vimtex-[])*
-  go to [count] previous end of a section.
+*<plug>(vimtex-][)*
+  go to [count] next end of a section.
   |exclusive| motion.
 
 *<plug>(vimtex-[[)*
   go to [count] previous beginning of a section.
+  |exclusive| motion.
+
+*<plug>(vimtex-[])*
+  go to [count] previous end of a section.
   |exclusive| motion.
 
 *<plug>(vimtex-]m)*
@@ -4058,7 +4150,7 @@ further customization.
           buffer does not necessarily have filetype "tex".
 
   *VimtexEventInitPre*
-*VimtexEventInitPost*
+  *VimtexEventInitPost*
     These events are triggered at the start/end of VimTeX initialization.  The
     post event may e.g. be used to automatically start compiling a document.
 
@@ -4073,7 +4165,7 @@ further customization.
     compilation. This is only supported by |vimtex-compiler-latexmk|.
 
   *VimtexEventCompileSuccess*
-*VimtexEventCompileFailed*
+  *VimtexEventCompileFailed*
     These events are triggered after successful/failed compilation and
     allows users to add custom callback functionality.
 
@@ -4098,9 +4190,9 @@ Examples (Vimscript) - see below for a Lua example: >vim
 
   " Compile on initialization, cleanup on quit
   augroup vimtex_event_1
-    au!
-    au User VimtexEventQuit     VimtexClean
-    au User VimtexEventInitPost VimtexCompile
+    autocmd!
+    autocmd User VimtexEventQuit     VimtexClean
+    autocmd User VimtexEventInitPost VimtexCompile!
   augroup END
 
   " Close viewers when VimTeX buffers are closed
@@ -4113,8 +4205,8 @@ Examples (Vimscript) - see below for a Lua example: >vim
   endfunction
 
   augroup vimtex_event_2
-    au!
-    au User VimtexEventQuit call CloseViewers()
+    autocmd!
+    autocmd User VimtexEventQuit call CloseViewers()
   augroup END
 
   " Add custom mappings in ToC buffer
@@ -4124,20 +4216,46 @@ Examples (Vimscript) - see below for a Lua example: >vim
   endfunction
 
   augroup vimtex_event_3
-    au!
-    au User VimtexEventTocCreated call TocMappings()
+    autocmd!
+    autocmd User VimtexEventTocCreated call TocMappings()
   augroup END
 
   " Specify window position when opening ToC entries
   augroup vimtex_event_4
-    au!
-    au User VimtexEventTocActivated normal! zt
+    autocmd!
+    autocmd User VimtexEventTocActivated normal! zt
   augroup END
 
-  " Specify extra behaviour after reverse goto
+  function! CenterAndFlash() abort
+    " Close all folds, then open only the folds at cursor position, then
+    " center the cursor in window.
+    normal! zMzvzz
+
+    let save_cursorline_state = &cursorline
+
+    " Add simple flashing effect, see
+    " * https://vi.stackexchange.com/a/3481/29697
+    " * https://stackoverflow.com/a/33775128/38281
+    for i in range(1, 3)
+      set cursorline
+      redraw
+      sleep 200m
+      set nocursorline
+      redraw
+      sleep 200m
+    endfor
+
+    let &cursorline = save_cursorline_state
+  endfunction
+
+  " Specify additional behaviour after inverse search
   augroup vimtex_event_5
-    au!
-    au User VimtexEventViewReverse normal! zMzvzz
+    autocmd!
+    " Use a custom center and flash function
+    autocmd User VimtexEventViewReverse call CenterAndFlash()
+
+    " Or perhaps just use a vimtex blink function
+    autocmd User VimtexEventViewReverse call vimtex#ui#blink()
   augroup END
 
   " Focus the terminal after inverse search
@@ -4191,27 +4309,27 @@ automatically, see |g:vimtex_text_obj_variant| for more info.
 
 Some examples of how to use the text objects can be useful. The following is
 a simple table that shows the original text on the left, the keys that are
-typed in the middle, and the result on the right. The bar "|" indicates the
+typed in the middle, and the result on the right. The bar "█" indicates the
 cursor position before the operation. >
 
   BEFORE                       KEYS    AFTER
-  \comm|and{arg}               dic     \command{}
-  \command{a|rg}               gUac    \COMMAND{ARG}
+  \comm█and{arg}               dic     \command{}
+  \command{a█rg}               gUac    \COMMAND{ARG}
 
-  \lef|t( asd \right)          cid     \left(| \right)
+  \lef█t( asd \right)          cid     \left(█ \right)
 
   \begin{x}                    die     \begin{x}
-    hello world|                       \end{x}
+    hello world█                       \end{x}
   \end{x}
 
-  $math | here$                da$
+  $math █ here$                da$
 
   \begin{itemize}                      \begin{itemize}
-    \item hello moon|          cim       \item |
+    \item hello moon█          cim       \item █
   \end{itemize}                        \end{itemize}
 
   \begin{itemize}                      \begin{itemize}
-    \item hello moon|          dam     \end{itemize}
+    \item hello moon█          dam     \end{itemize}
   \end{itemize}
 
 Note: The "greediness" of the command text objects (`ic` and `ac`) can be
@@ -4776,7 +4894,7 @@ Note: The |fold-expr| method of folding is well known to be slow, e.g. for
 In order to get slightly cleaner fold text, I recommend setting the global
 'fillchars' option to a single space for folds: >vim
 
-  set fillchars=fold:\
+  set fillchars=fold:\ 
 
 Note: Remember to include the whitespace after backslash!
 
@@ -4827,6 +4945,7 @@ correct syntax parser without running the `tex` compiler itself. VimTeX aims
 to be pragmatic and provide a best-effort syntax highlighting - a decent trade
 off between simplicity and completeness.
 
+                                                             *vimtex-synignore*
 There will probably always be situations where the parser will fail, and in
 some cases it may be hard to "recover". It is therefore possible to manually
 activate a severely reduced syntax zone to handle such situations. The zone is
@@ -5293,7 +5412,7 @@ one may override the default mapping, e.g.: >vim
   nnoremap <localleader>lt :<c-u>Unite vimtex<cr>
 
 ------------------------------------------------------------------------------
-FZF INTEGRATION                                                   *vimtex-fzf*
+FZF INTEGRATION                                                    *vimtex-fzf*
 
                                            https://github.com/junegunn/fzf.vim
                                                https://github.com/junegunn/fzf
@@ -5326,6 +5445,44 @@ example, if you've defined `g:fzf_layout`, then those options can be passed to
 `vimtex#fzf#run`: >vim
 
   :call vimtex#fzf#run('ctli', g:fzf_layout)
+
+------------------------------------------------------------------------------
+FZF-LUA INTEGRATION                                            *vimtex-fzf-lua*
+
+                                            https://github.com/ibhagwan/fzf-lua
+|fzf-lua| integrates the general-purpose command-line fuzzy finder |fzf| into
+neovim through Lua. It may be used to quickly navigate VimTeX's built-in ToC
+feature. To use it, define a mapping to `require("vimtex.fzf-lua").run(options)`,
+e.g. >lua
+
+  vim.keymap.set("n", "<localleader>lt", function()
+    return require("vimtex.fzf-lua").run()
+  end)
+
+Currently two options are supported: "layers" and "fzf_opts". You can pass
+custom options to fzf-lua via "fzf_opts". You can also choose to only show
+certain entry "layers" by passing a layer string. By default, all layers are
+displayed. To only show `content` and `label`s use
+`require("vimtex.fzf-lua").run({layers ="cl"})`.
+
+Note: This requires fzf version 0.60.2 or newer!
+
+------------------------------------------------------------------------------
+SNACKS INTEGRATION                                              *vimtex-snacks*
+
+                                           https://github.com/folke/snacks.nvim
+|Snacks| is a collection of quality of life plugins for Neovim. It includes
+a picker, which can be used with the table of contents in VimTeX.
+
+To use it, define a mapping to `require("vimtex.snacks").toc(options)`, e.g. >lua
+
+  vim.keymap.set("n", "<localleader>lt", function()
+    return require("vimtex.snacks").toc()
+  end)
+
+Currently three options are supported: "layers" and "preview" and "confirm".
+The first is similar to |vimtex-fzf-lua|, the latter are passed directly to
+the Snacks picker.
 
 ==============================================================================
 COMPILER                                                      *vimtex-compiler*
@@ -5447,7 +5604,7 @@ LATEXRUN                                             *vimtex-compiler-latexrun*
 
                                         https://github.com/aclements/latexrun
 > See LaTeX run. Run latexrun.
-> 
+
 > latexrun fits LaTeX into a modern build environment. It hides LaTeX's
 > circular dependencies, surfaces errors in a standard and user-friendly
 > format, and generally enables other tools to do what they do best.
@@ -5595,7 +5752,7 @@ A common workflow is to utilize the |location-list| with |:lmake|:
 
 After linting, the compiler or linter messages are added to the location list.
 This list may be displayed in the location-list window with |:lwindow|, and
-one may jump between the entries with |:lN| and |:lp|. To automatically open
+one may jump between the entries with |:lne| and |:lp|. To automatically open
 the location-list window after linting is finished, one may add the following
 to one's |vimrc|: >vim
 
@@ -5631,7 +5788,7 @@ allows one to use the location list. For `AsyncRun`, one may define a custom
           \ AsyncRun<bang> -auto=make -program=make
 
 The quickfix window that lists the linter errors and warnings can then be
-opened by |:cwindow| and they can be jumped to by |:cN| respectively |:cp|.
+opened by |:cwindow| and they can be jumped to by |:cn| and |:cp| respectively.
 
 Often, a syntax error in a BibTeX file is due to a missing comma after an
 entry. One may define a command to automatically add such missing commas, e.g.
@@ -5851,11 +6008,15 @@ Configuration: >vim
   let g:vimtex_view_general_options = '--unique file:@pdf\#src:@line@tex'
 
 Inverse search can be set up within Okular in the settings pane under
-"Settings > Editor > Custom Text Editor" [0]. Use the viewer configuration as
-explained in |vimtex-synctex-inverse-search|.
+"Settings > Editor > Custom Text Editor" [0]. The following is the recommended
+settings for Vim and neovim, respectively: >bash
+
+  vim -v --not-a-term -T dumb -c "VimtexInverseSearch %l '%f'"
+
+  nvim --headless -c "VimtexInverseSearch %l '%f'"
 
 To perform an inverse search in Okular, do `shift + click` while browse mode
-is enabled.
+is enabled. For more info, see |vimtex-synctex-inverse-search|.
 
 [0]: https://docs.kde.org/stable5/en/okular/okular/inverse_search.html
 
@@ -5863,17 +6024,24 @@ is enabled.
 qpdfview ~
 https://launchpad.net/qpdfview
 qpdfview is a tabbed document viewer. It supports both forward and inverse
-search. The latter must be set up from within the viewer (under "Edit ->
-Settings -> Source Editor"). Use the viewer configuration as explained in
-|vimtex-synctex-inverse-search|, but note that the interpolation variables
-should be `%1` for the filename and `%2` for the line number. Inverse search
-is triggered by right clicking in the document.
+search.
 
 Configuration: >vim
   let g:vimtex_view_general_viewer = 'qpdfview'
   let g:vimtex_view_general_options
     \ = '--unique @pdf\#src:@tex:@line:@col'
-<
+
+Inverse search must be set up from within qpdfview under "Edit -> Settings ->
+Source Editor". The following is the recommended settings for Vim and neovim,
+respectively: >bash
+
+  vim -v --not-a-term -T dumb -c "VimtexInverseSearch %2 '%1'"
+
+  nvim --headless -c "VimtexInverseSearch %2 '%1'"
+
+Use right click to perform an inverse search. For more info, see
+|vimtex-synctex-inverse-search|.
+
                                                            *vimtex-view-sioyek*
 Sioyek ~
 https://sioyek.info/
@@ -5888,8 +6056,10 @@ VimTeX will try to pass options to Sioyek to automatically configure inverse
 search. This means that, in most cases, inverse search should work as expected
 without any further configuration. One may still be interested in learning how
 inverse-search configuration works, in which case one should read
-|vimtex-synctex-inverse-search|. The interpolation variables for Sioyek
-configuration are `%2` and `%1`, not `%l` and `%f`.
+|vimtex-synctex-inverse-search|.
+
+Note: The interpolation variables for Sioyek inverse search configuration are
+      `%2` and `%1`, not `%l` and `%f`.
 
 Associated settings:
 * |g:vimtex_callback_progpath|
@@ -5910,12 +6080,22 @@ Configuration: >vim
 To configure inverse search: Open the `Sync` tab in the settings panel in Skim
 and set the options according to your desired version of Vim. With MacVim, one
 may use the `MacVim` preset. However, it may be more convenient to use a
-`Custom` setting and configure the inverse search option as explained in
-|vimtex-synctex-inverse-search|. Note that the interpolation variables should
-be `%line` and `%file`, not `%l` and `%f`.
+`Custom` setting and configure the inverse search option to >bash
+
+  vim -v --not-a-term -T dumb -c "VimtexInverseSearch %line '%file'"
+
+  nvim --headless -c "VimtexInverseSearch %line '%file'"
+
+Depending on your system configuration, it may be necessary to specify the
+path to the Vim/Neovim binary. For example, if Neovim was installed via
+homebrew, one can specify the following in the Skim settings panel. >bash
+
+  Command = /opt/homebrew/bin/nvim
+  Arguments = --headless -c "VimtexInverseSearch %line '%file'"
 
 Inverse search is activated by pressing `Shift` and `Command`, then clicking
-the text you want to search.
+the text you want to search. For more info on inverse search, see
+|vimtex-synctex-inverse-search|.
 
 Associated settings:
 * |g:vimtex_view_skim_activate|
@@ -5936,12 +6116,26 @@ Configuration: >vim
 For convenience, the above configuration is used by default on Windows if
 `SumatraPDF` is detected as executable.
 
-Inverse search must be configured under `Settings --> Options` from within
-SumatraPDF. Find the section `Set inverse search command-line` in the bottom
-and use the viewer configuration as explained in
-|vimtex-synctex-inverse-search|.
+To configure inverse search:
 
-Inverse search is activated with a double click in the PDF file.
+1. Install SumatraPDF for all users and add to `PATH.`
+2. Open "Settings -> Advanced Options" in SumatraPDF and edit the following
+   variables: >bash
+
+     InverseSearchCmdLine = cmd /c start /min "" nvim --headless -c "VimtexInverseSearch %l '%f'"
+     EnableTeXEnhancements = true
+<
+   For Vim instead of Neovim, use: >bash
+
+     InverseSearchCmdLine = cmd /c start /min "" vim -v --not-a-term -T dumb -c "VimtexInverseSearch %l '%f'"
+
+If you are using an old version of SumatraPDF where `Advanced Options` is not
+available: open "Settings -> Options", Find the section "Set inverse search
+command-line" in the bottom, and use the appropriate viewer configuration,
+i.e. one of the `InverseSearchCmdLine` from step 2 above.
+
+Inverse search is activated with a double click in the PDF file. See
+|vimtex-synctex-inverse-search| for more info on inverse search.
 
 Note: If you want to use SumatraPDF with VimTeX from within WSL, please read
       |vimtex-faq-sumatrapdf-wsl|.
@@ -5982,17 +6176,20 @@ To configure inverse search:
    preferences pane.
 
 2. Create a shell script `/usr/local/bin/othereditor` that contains a call to
-   vim as explained in |vimtex-synctex-inverse-search|. Note that the
-   interpolation variables `%l` and `%f` should be replaced by `$1` and `$2`,
-   respectively, as TeXShop will pass the line and file as the first and
-   second argument when calling the script.
+   either Vim or neovim, i.e. one of the following lines, respectively: >bash
 
+     vim -v --not-a-term -T dumb -c "VimtexInverseSearch $1 '$2'"
+
+     nvim --headless -c "VimtexInverseSearch $1 '$2'"
+<
    The script must be executable: >bash
 
-      chmod +x /usr/local/bin/othereditor
+     chmod +x /usr/local/bin/othereditor
 <
    MacVim users should read |vimtex-faq-texshopviewer| for additional setup
    instructions and limitations.
+
+For more info on inverse search, please see |vimtex-synctex-inverse-search|.
 
 Associated settings:
 * |g:vimtex_view_texshop_activate|
@@ -6017,21 +6214,29 @@ Configuration: >vim
   " For simple variant without xdotool
   let g:vimtex_view_method = 'zathura_simple'
 
-VimTeX will start Zathura with the `-x` argument to specify the inverse search
-options automatically. This means that, in most cases, inverse search should
-work as expected without any further configuration. One may still be
-interested in learning how inverse-search configuration works, in which case
-one should read |vimtex-synctex-inverse-search|. The interpolation variables
-for Zathura configuration are `%{line}` and `%{input}`, not `%l` and `%f`.
-
 The main variant uses `xdotool` to help avoid duplicate Zathura instances.
 However, in some environments, `xdotool` is not available. Here the simple
 variant should work well.
 
+VimTeX will start Zathura with the `-x` argument to specify the inverse search
+options automatically. This means that, in most cases, inverse search should
+work as expected without any further configuration. One may still be
+interested in learning how inverse-search configuration works, in which case
+one should read |vimtex-synctex-inverse-search|.
+
+Zathura also supports `%{column}`, so if your synctex implementation supports
+getting the column, then you can put the following in your `zathurarc`: >conf
+
+  set synctex-editor-command "vim -v --not-a-term -T dumb -c \"VimtexInverseSearch %{line}:%{column} '%{input}'\""
+
 Associated settings:
 * |g:vimtex_callback_progpath|
 * |g:vimtex_view_zathura_check_libsynctex|
+* |g:vimtex_view_zathura_use_synctex|
 * |g:vimtex_view_zathura_options|
+
+Note: The interpolation variables for Zathura configuration of inverse search
+      are `%{line}` and `%{input}`, not `%l` and `%f`.
 
 Note: Recent versions of Zathura no longer ensures synctex support. This has
       resulted in synctex support being dropped on some platforms, e.g. on
@@ -6084,9 +6289,7 @@ of shell commands executed by the viewer. It is usually configured within the
 specific viewer through an option named something like "inverse search
 command-line". The option specifies the necessary shell command to perform the
 inverse search. The target line and file are provided as interpolation
-variables. In the following, we use `%l` and `%f`, but the interpolation
-variables may be named different in some viewers (e.g. |vimtex-view-skim|).
-A typical shell command looks like this: >
+variables. A typical shell command looks like this: >bash
 
   vim --remote-silent +%l %f
 
@@ -6105,12 +6308,19 @@ To configure with `VimtexInverseSearch`, use: >bash
 
   nvim --headless -c "VimtexInverseSearch %l '%f'"
 
+  # Or, if you also have the column number in %c
+  nvim --headless -c "VimtexInverseSearch %l:%c '%f'"
+
 On Windows, the above commands may lead to an annoying command window "popup".
 This may be avoided, or at least reduced, with the following variants: >bash
 
   cmd /c start /min "" vim -v --not-a-term -T dumb -c "VimtexInverseSearch %l '%f'"
 
   cmd /c start /min "" nvim --headless -c "VimtexInverseSearch %l '%f'"
+
+Note: In the above, we used `%l` and `%f`. However, the interpolation
+      variables may be named different in some viewers. The correct names are
+      given for each supported viewer (see e.g. |vimtex-view-skim|).
 
 Note: Vim users should be aware that one may need to ensure that the server is
       really running, see |vimtex-clientserver|.
@@ -6119,6 +6329,9 @@ Note: Many plugin managers provide mechanisms to lazy load plugins. There is
       no need to use such a mechanism for VimTeX, and in fact, doing it will
       prevent Vim/neovim from loading the `:VimtexInverseSearch` command.
 
+Note: You may need to add the installation prefix for Vim/Neovim, for example
+      `/opt/homebrew/bin`, in your PDF viewer if inverse search does not work.
+
 ==============================================================================
 LATEX DOCUMENTATION                                           *vimtex-latexdoc*
 
@@ -6126,7 +6339,7 @@ VimTeX provides the command |:VimtexDocPackage| to open documentation for
 packages and documentclasses. The command is mapped to `K` by default.
 
 For simplicity, the standard method provided by VimTeX is to look up
-documentation online through http://texdoc.net/. However, this can be
+documentation online through http://texdoc.org/. However, this can be
 customized with the option |g:vimtex_doc_handlers|. The option allows much
 flexibility for advanced users. For users that want to use a local `texdoc`
 installation as the main method, they may use the following config: >vim
@@ -6160,10 +6373,15 @@ found online at [2].
 ------------------------------------------------------------------------------
 OFFLINE                                               *vimtex-latexdoc-offline*
 
-One may use a more dedicated offline documentation system. On macOS, Dash [0]
-is a non-free but high-quality system. On Linux, one may use Zeal [1] or dasht
-[2], both of which access the Dash documentation sets. Zeal should also work
-well on Windows.
+One may use offline documentation by using a different handler with the
+|g:vimtex_doc_handlers| option. An example: >vim
+
+  let g:vimtex_doc_handlers = ['vimtex#doc#handlers#texdoc']
+
+One may also use a more dedicated offline documentation system. On macOS, Dash
+[0] is a non-free but high-quality system. On Linux, one may use Zeal [1] or
+dasht [2], both of which access the Dash documentation sets. Zeal should also
+work well on Windows.
 
 The above systems may be accessed from vim through dash.vim [3], zeavim.vim
 [4] or vim-dasht [5], respectively. Other alternative vim plugins include
@@ -6263,7 +6481,7 @@ Note: This reference is currently a work in progress!
 
 *vimtex#cite#get_key*
   Returns the citation key under the cursor. Can be useful e.g. to create
-  a function to open a citation in another progrem such as BibDesk or Zotero.
+  a function to open a citation in another program such as BibDesk or Zotero.
   For example: >vim
 
     function! OpenInBibDesk() abort
@@ -6322,6 +6540,9 @@ Note: This reference is currently a work in progress!
   Utility function for reverse search from pdf viewer. Takes two arguments:
   the line number and a filename. The function runs the event
   |VimtexEventViewReverse| at the end, which allows more user customization.
+  E.g., the user could call `vimtex#ui#blink()` to have a blinking effect
+  after doing the reverse search. See the docs for |VimtexEventViewReverse|
+  for an example.
 
 ==============================================================================
 FAQ                                                                *vimtex-faq*
@@ -6478,7 +6699,7 @@ A: If you change `TEXMFHOME` in your `.bashrc` or `.zshrc` or similar and use `g
    not know about the new value of `TEXMFHOME`. The reason for this is that
    `vim` invokes shells (e.g. with `!` or `system()`) as non-interactive and
    non-login shell, which means `.bashrc` or `.zshrc` are not read.  If you
-   start `gvim` from an interactive shell which has read `.bashrc` or `.zshrc,
+   start `gvim` from an interactive shell which has read `.bashrc` or `.zshrc`,
    `gvim` inherits these values and therefore they are consistent.
 
    One can make the invoked shells interactive by setting |shellcmdflag| to
@@ -6587,10 +6808,15 @@ A: SumatraPDF expects all path arguments to be in the regular Windows format,
 ------------------------------------------------------------------------------
                                                      *vimtex-faq-zathura-macos*
 Q: Does Zathura + VimTeX work on macOS?
-A: Yes, it should work.  The following recipe has been reported to work [0],
-   although users with Apple Silicon CPUs have reported difficulties starting
-   `dbus`. These users may want to try the more involved recipe given in [3]
-   if the below procedure fails.
+A: Yes, it works. It is recommended to use the `'zathura_simple'` variant.
+   Running Zathura without synctex support should "just work". To do so, set
+   the |g:vimtex_view_zathura_use_synctex| to 0.
+
+   To have synctex support, one needs to have `dbus` working properly. This
+   seems to be quite hard, but the following recipe has been reported to work
+   for some people [0]. However, users with Apple Silicon CPUs have reported
+   difficulties starting `dbus`. These users may want to try the more involved
+   recipe given in [3] if the below procedure fails.
 
    The steps assume the user has installed and knows how to use Homebrew [1].
 
@@ -6604,7 +6830,7 @@ A: Yes, it should work.  The following recipe has been reported to work [0],
 
       export DBUS_SESSION_BUS_ADDRESS="unix:path=$DBUS_LAUNCHD_SESSION_BUS_SOCKET"
 <
-   3. Changed the value of `<auth><\auth>` in
+   3. Change the value of `<auth><\auth>` in
       `/usr/local/opt/dbus/share/dbus-1/session.conf` from `EXTERNAL` to
       `DBUS_COOKIE_SHA1`.
 
@@ -6614,11 +6840,19 @@ A: Yes, it should work.  The following recipe has been reported to work [0],
       encounter problems with running `dbus` with `brew services start`, they
       could try to start it manually as explained in [4].
 
-   5. Now install Zathura (most recent version, aka HEAD): >
+      If `brew services start dbus` does not work, which seems to be
+      a relatively common problem, then the user may be more lucky if they try
+      to start `dbus` with `launchctl`: >sh
+
+      launchctl start org.freedesktop.dbus-session
+<
+      NB: This may need to be done after each restart of your system.
+
+   5. Now install Zathura (most recent version, aka HEAD): >sh
 
       brew tap zegervdv/zathura
-      brew install girara --HEAD
-      brew install zathura --HEAD --with-synctex
+      brew install girara
+      brew install zathura --with-synctex
       brew install zathura-pdf-poppler
       mkdir -p $(brew --prefix zathura)/lib/zathura
       ln -s $(brew --prefix zathura-pdf-poppler)/libpdf-poppler.dylib $(brew --prefix zathura)/lib/zathura/libpdf-poppler.dylib
@@ -6678,8 +6912,8 @@ A: VimTeX implements a traditional syntax script for syntax highlighting of
 
    However, it is hard to write a general parser for LaTeX. This is because
    LaTeX is a semantic language with a large amount of different commands and
-   macros from thousands of available packages, many of which makes sense to
-   highlight in a different manner. That is, we need to handle a whole lot of
+   macros from thousands of available packages, many of which make sense to be
+   highlighted in a different manner. That is, we need to handle a whole lot of
    special cases and edge cases!
 
    Furthermore, Tree-sitter highlighting does not currently support
@@ -6756,7 +6990,7 @@ A: Start by reading the section on |vimtex-view-texshop|. The examples below
    was opened. If the buffer is not active, in a hidden tab or if the file is
    not open at all, inverse search will fail.
 
-   As alternative, to `VimtexInverseSearch`if the .tex document was opened
+   As an alternative to `VimtexInverseSearch`, if the .tex document was opened
    with the `--remote-silent` option, i.e.: >bash
 
      /usr/local/bin/mvim --remote-silent foo.tex
@@ -6797,7 +7031,7 @@ the quickfix window does not load.
 
 Tips:
 1. Ensure that a latexmk process and a Perl process have started. If they have
-   not been started, then these two programs may not accessible given your
+   not been started, then these two programs may not be accessible given your
    operating system's PATH environment variable.
 2. Ensure that the option `-interaction=nonstopmode` is provided to latexmk.
    This is done by default by VimTeX, unless the user provides custom options
@@ -7139,4 +7373,6 @@ named vim-latex, which conflicted with Vim LaTeX-Suite which is also known as
 vim-latex.
 
 ==============================================================================
+------------------------------------------------------------------------------
+
  vim:tw=78:ts=8:ft=help:norl:fdm=marker:
