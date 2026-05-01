@@ -278,7 +278,7 @@ function! vimtex#syntax#core#init_rules() abort " {{{1
 
   " Definitions/Commands
   " E.g. \def \foo #1#2 {foo #1 bar #2 baz}
-  syntax match texCmdDef "\%#=1\\def\>" nextgroup=texDefArgName skipwhite skipnl
+  syntax match texCmdDef "\%#=1\\[egx]\?def\>" nextgroup=texDefArgName skipwhite skipnl
   syntax match texDefArgName contained nextgroup=texDefParmPre,texDefArgBody skipwhite skipnl "\%#=1\\[a-zA-Z@]\+"
   syntax match texDefArgName contained nextgroup=texDefParmPre,texDefArgBody skipwhite skipnl "\%#=1\\[^a-zA-Z@]"
   syntax match texDefParmPre contained nextgroup=texDefArgBody skipwhite skipnl "#[^{]*"
@@ -535,7 +535,7 @@ function! vimtex#syntax#core#init_rules() abort " {{{1
         \ 'contains': 'TOP,@NoSpell,TexError',
         \})
 
-  syntax match texE3Cmd "\\\w\+"
+  syntax match texE3Cmd "\\\h\+"
         \ contained containedin=@texClusterE3
         \ nextgroup=texE3Opt,texE3Arg skipwhite skipnl
   call vimtex#syntax#core#new_opt('texE3Opt', {'next': 'texE3Arg'})

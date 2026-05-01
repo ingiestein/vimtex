@@ -1,63 +1,58 @@
 local utils = require "vimtex.utils.picker"
-local snacks = require "snacks"
+
+---@class VimtexSnacksOptions: snacks.picker.Config
+---@field layers? string The layers to filter. Can be a substring of "ctli"
+---                      corresponding to content, todos, labels, and includes.
 
 local M = {}
 
----@class VimtexSnacksOptions
----@field layers? string The layers to filter. Can be a substring of "ctli"
----                      corresponding to content, todos, labels, and includes.
----@field preview? snacks.picker.Preview
----@field confirm? snacks.picker.Action.spec
+M.source = {
+  source = "vimtex_toc",
+  finder = function(opts)
+    local layers = (opts and opts.layers) or "ctli"
 
----Runs Snacks picker to select and navigate to from a list of TOC items.
----
----@param options VimtexSnacksOptions?
----@return nil
-M.toc = function(options)
-  local layers = options and options.layers or "ctli"
-  local preview = options and options.preview
-    or function(ctx)
-      if ctx.item.file then
-        snacks.picker.preview.file(ctx)
-      else
-        ctx.preview:reset()
-        ctx.preview:set_title "No preview"
-      end
-    end
-  local confirm = options and options.confirm
-    or function(picker, item)
-      picker:close()
-      vim.cmd.edit(item.file)
-      vim.api.nvim_win_set_cursor(0, item.pos)
-      vim.cmd.normal "zz"
+    local ok, entries = pcall(vim.fn["vimtex#parser#toc"])
+    if not ok then
+      return {}
     end
 
-  local entries = vim.fn["vimtex#parser#toc"]()
-  entries = vim.tbl_filter(function(t)
-    return string.find(layers, t.type:sub(1, 1)) ~= nil
-  end, entries)
+    ---@cast entries table
+    entries = vim.tbl_filter(function(t)
+      return string.find(layers, t.type:sub(1, 1)) ~= nil
+    end, entries)
 
-  local items = vim.tbl_map(function(v)
-    local section_num = utils.format_number(v.number)
-    local display = section_num ~= "" and (section_num .. " " .. v.title)
-      or v.title
+    return vim.tbl_map(function(v)
+      local section_num = utils.format_number(v.number)
+      local display = section_num ~= "" and (section_num .. " " .. v.title)
+        or v.title
 
-    return {
-      text = display,
-      file = v.file,
-      pos = { v.line or 1, 0 },
-      type = v.type,
-    }
-  end, entries)
+      return {
+        text = display,
+        file = v.file,
+        pos = { v.line or 1, 0 },
+        type = v.type,
+      }
+    end, entries)
+  end,
+  format = "text",
+  preview = "file",
+  confirm = "jump",
+}
 
-  snacks.picker.pick {
-    source = "vimtex_toc",
-    items = items,
-    format = "text",
-    layout = { preset = "ivy" },
-    preview = preview,
-    confirm = confirm,
-  }
+function M.register()
+  local ok, picker = pcall(require, "snacks.picker")
+  if ok and picker then
+    ---@diagnostic disable-next-line: undefined-field
+    picker.sources.vimtex_toc = M.source
+  end
+end
+
+function M.toc(options)
+  local ok, picker = pcall(require, "snacks.picker")
+  if ok and picker then
+    ---@diagnostic disable-next-line: call-non-callable
+    return picker("vimtex_toc", options)
+  end
 end
 
 return M
