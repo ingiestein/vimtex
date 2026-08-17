@@ -99,6 +99,8 @@ function! vimtex#options#init() abort " {{{1
   call s:init_option('vimtex_fold_types_defaults', {
         \ 'preamble' : {},
         \ 'items' : {},
+        \ 'comment_pkg' : {},
+        \ 'comments' : { 'enabled' : 0 },
         \ 'envs' : {
         \   'blacklist' : [],
         \   'whitelist' : [],
@@ -290,6 +292,8 @@ function! vimtex#options#init() abort " {{{1
         \])
   call s:init_option('vimtex_indent_on_ampersands', 1)
 
+  call s:init_option('vimtex_main_choose_first', 0)
+
   call s:init_option('vimtex_mappings_enabled', 1)
   call s:init_option('vimtex_mappings_disable', {})
   call s:init_option('vimtex_mappings_override_existing', 0)
@@ -467,6 +471,22 @@ function! vimtex#options#init() abort " {{{1
         \ 'dfrac': 'INLINE',
         \})
 
+  call s:init_option('vimtex_toggle_star_cmds', [
+        \ 'part',
+        \ '%(sub)*section',
+        \ '%(sub)*paragraph',
+        \ '[vh]space',
+        \ '\w*cite\w*',
+        \ '\w*ref',
+        \ '%(re)?newcommand',
+        \ 'providecommand',
+        \ 'DeclareRobustCommand',
+        \ 'DeclareMathOperator',
+        \ '%(re)?newenvironment',
+        \ 'includegraphics',
+        \ 'verb',
+        \])
+
   call s:init_option('vimtex_ui_method', {
         \ 'confirm': has('nvim') ? 'nvim' : 'legacy',
         \ 'input': has('nvim') ? 'nvim' : 'legacy',
@@ -502,6 +522,11 @@ function! vimtex#options#init() abort " {{{1
     call s:init_option('vimtex_view_general_options', '@pdf')
   endif
 
+  call s:init_option('vimtex_view_galley_activate', 0)
+  call s:init_option('vimtex_view_galley_sync', 0)
+  call s:init_option('vimtex_view_lektra_exe', 'lektra')
+  call s:init_option('vimtex_view_lektra_options', '')
+  call s:init_option('vimtex_view_lektra_use_synctex', 1)
   call s:init_option('vimtex_view_mupdf_options', '')
   call s:init_option('vimtex_view_mupdf_send_keys', '')
   call s:init_option('vimtex_view_sioyek_exe', 'sioyek')

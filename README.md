@@ -32,10 +32,10 @@ filetype and syntax plugin for LaTeX files.
 
 ## Requirements
 
-VimTeX requires Vim version 9.1 or Neovim version 0.10. The requirements
-were updated in January 2025 after the release of VimTeX 2.16. If you are stuck
+VimTeX requires Vim version 9.2 or Neovim version 0.12.4. The requirements
+were updated in July 2026 after the release of VimTeX 2.18. If you are stuck
 on older versions of Vim or Neovim, then you should not use the most recent
-version of VimTeX, but instead remain at the v2.15 tag (or older).
+version of VimTeX, but instead remain at the v2.17 tag (or older).
 
 Some features require external tools. For example, the default compiler backend
 relies on [latexmk](https://www.cantab.net/users/johncollins/latexmk/index.html).
@@ -56,10 +56,28 @@ The following explains the most common and popular approaches.
 > In fact, doing it will _break_ the inverse-search mechanism, which relies on
 > a _global_ command (`:VimtexInverseSearch`).
 
+### vim.pack in Neovim
+
+Neovim has a built-in plugin manager called [vim.pack](https://neovim.io/doc/user/pack/#_plugin-manager).
+To use it, simply create a file like `~/.config/nvim/plugin/vimtex.lua` with:
+
+```lua
+-- Note that v2.15 is NOT the most recent version!
+vim.pack.add { { src = "https://github.com/lervag/vimtex", version = "v2.15" } }
+
+-- To use the most recent version from git, you can do simply:
+vim.pack.add { "https://github.com/lervag/vimtex" }
+
+-- VimTeX configuration goes here, e.g.
+vim.g.vimtex_view_method = "zathura"
+```
+
+VimTeX is mostly implemented with Vimscript and is configured with the classical vimscript variable convention like `g:vimtex_OPTION_NAME`.
+Nowadays, Neovim is often configured with Lua, thus some users may be interested in reading `:help lua-vimscript`.
+
 ### lazy.nvim
 
-In Neovim, [lazy.nvim](https://github.com/folke/lazy.nvim) is probably the most popular plugin manager.
-To install VimTeX, add a plugin spec similar to this:
+To install VimTeX with [lazy.nvim](https://github.com/folke/lazy.nvim), add a plugin spec similar to this:
 
 ```lua
 {
@@ -72,11 +90,6 @@ To install VimTeX, add a plugin spec similar to this:
   end
 }
 ```
-
-VimTeX is mostly implemented with Vimscript and is configured with the
-classical vimscript variable convention like `g:vimtex_OPTION_NAME`. Nowadays,
-Neovim is often configured with Lua, thus some users may be interested in
-reading `:help lua-vimscript`.
 
 ### vim-plug
 

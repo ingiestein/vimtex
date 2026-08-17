@@ -110,6 +110,12 @@ function! vimtex#syntax#core#init_rules() abort " {{{1
         \_texMathBackslash,
         \@NoSpell
 
+  " Alias for the cluster name used by the original tex.vim syntax script.
+  " Several syntax scripts embed TeX math with `syntax include` and then refer
+  " to this cluster by name, e.g. syntax/mediawiki.vim and syntax/rnoweb.vim in
+  " the Vim runtime.
+  syntax cluster texMathZoneGroup contains=@texClusterMath
+
   " }}}2
 
   " {{{2 TeX symbols and special characters
@@ -168,8 +174,8 @@ function! vimtex#syntax#core#init_rules() abort " {{{1
   syntax match texCmdAccent "\%#=1\\[bcdvuH]\ze[^a-zA-Z@]"
   syntax match texCmdAccent /\%#=1\\[=^.~"`']/
   syntax match texCmdAccent /\%#=1\\['=t'.c^ud"vb~Hr]{\a}/
-  syntax match texCmdLigature "\%#=1\v\\%([ijolL]|ae|oe|ss|AA|AE|OE)$"
-  syntax match texCmdLigature "\%#=1\v\\%([ijolL]|ae|oe|ss|AA|AE|OE)\ze[^a-zA-Z@]"
+  syntax match texCmdLigature "\%#=1\v\\%([ijolL]|ae|dj|oe|ss|AA|AE|DJ|OE)$"
+  syntax match texCmdLigature "\%#=1\v\\%([ijolL]|ae|dj|oe|ss|AA|AE|DJ|OE)\ze[^a-zA-Z@]"
 
   " Spacecodes (TeX'isms)
   " * See e.g. https://en.wikibooks.org/wiki/TeX/catcode
@@ -522,45 +528,6 @@ function! vimtex#syntax#core#init_rules() abort " {{{1
         \})
 
   " }}}2
-  " {{{2 Zone: Expl3
-
-  syntax region texE3Zone matchgroup=texCmdE3
-        \ start="\%#=1\\\%(ExplSyntaxOn\|ProvidesExpl\%(Package\|Class\|File\)\)"
-        \ end="\%#=1\\ExplSyntaxOff\|\%$"
-        \ transparent
-        \ contains=TOP,@NoSpell,TexError
-
-  call vimtex#syntax#core#new_arg('texE3Group', {
-        \ 'opts': 'contained containedin=@texClusterE3',
-        \ 'contains': 'TOP,@NoSpell,TexError',
-        \})
-
-  syntax match texE3Cmd "\\\h\+"
-        \ contained containedin=@texClusterE3
-        \ nextgroup=texE3Opt,texE3Arg skipwhite skipnl
-  call vimtex#syntax#core#new_opt('texE3Opt', {'next': 'texE3Arg'})
-  call vimtex#syntax#core#new_arg('texE3Arg', {
-        \ 'next': 'texE3Arg',
-        \ 'opts': 'contained transparent'
-        \})
-
-  syntax match texE3CmdNestedZoneEnd '\\\ExplSyntaxOff'
-        \ contained containedin=texE3Arg,texE3Group
-
-  syntax match texE3Variable "\\[gl]_\%(\h\|@@_\@=\)*_\a\+"
-        \ contained containedin=@texClusterE3
-  syntax match texE3Constant "\\c_\%(\h\|@@_\@=\)*_\a\+"
-        \ contained containedin=@texClusterE3
-  syntax match texE3Function "\\\%(\h\|@@_\)\+:\a*"
-        \ contained containedin=@texClusterE3
-        \ contains=texE3Type
-
-  syntax match texE3Type ":[a-zA-Z]*" contained
-  syntax match texE3Parm "#\+[1-9]" contained containedin=@texClusterE3
-
-  syntax cluster texClusterE3 contains=texE3Zone,texE3Arg,texE3Group,texE3Opt
-
-  " }}}2
   " {{{2 Zone: Math
 
   " Define math region group
@@ -739,6 +706,46 @@ function! vimtex#syntax#core#init_rules() abort " {{{1
       call s:match_conceal_sections()
     endif
   endif
+
+  " }}}2
+  " {{{2 Expl3 mode
+
+  syntax region texE3Zone matchgroup=texCmdE3
+        \ start="\%#=1\\\%(ExplSyntaxOn\|ProvidesExpl\%(Package\|Class\|File\)\)"
+        \ end="\%#=1\\ExplSyntaxOff\|\%$"
+        \ transparent
+        \ contains=@texClusterBasic,texSpecialChar
+
+  call vimtex#syntax#core#new_arg('texE3Group', {
+        \ 'opts': 'contained containedin=@texClusterE3',
+        \ 'contains': '@texClusterBasic,texSpecialChar',
+        \})
+
+  syntax match texE3Cmd "\\\h\+"
+        \ contained containedin=@texClusterE3
+        \ nextgroup=texE3Opt,texE3Arg skipwhite skipnl
+  call vimtex#syntax#core#new_opt('texE3Opt', {'next': 'texE3Arg'})
+  call vimtex#syntax#core#new_arg('texE3Arg', {
+        \ 'next': 'texE3Arg',
+        \ 'contains': '@texClusterBasic,texSpecialChar',
+        \ 'opts': 'contained transparent'
+        \})
+
+  syntax match texE3CmdNestedZoneEnd '\\\ExplSyntaxOff'
+        \ contained containedin=texE3Arg,texE3Group
+
+  syntax match texE3Variable "\\[gl]_\%(\h\|@@_\@=\)*_\a\+"
+        \ contained containedin=@texClusterE3
+  syntax match texE3Constant "\\c_\%(\h\|@@_\@=\)*_\a\+"
+        \ contained containedin=@texClusterE3
+  syntax match texE3Function "\\\%(\h\|@@_\)\+:\a*"
+        \ contained containedin=@texClusterE3
+        \ contains=texE3Type
+
+  syntax match texE3Type ":[a-zA-Z]*" contained
+  syntax match texE3Parm "#\+[1-9]" contained containedin=@texClusterE3
+
+  syntax cluster texClusterE3 contains=texE3Zone,texE3Arg,texE3Group,texE3Opt
 
   " }}}2
   " {{{2 Commands: \begin{macrocode}
@@ -2471,19 +2478,21 @@ let s:map_accents = [
 
 " }}}1
 function! s:match_conceal_ligatures() abort " {{{1
-  syntax match texCmdLigature "\%#=1\\lq\>" conceal cchar=‘
-  syntax match texCmdLigature "\%#=1\\rq\>" conceal cchar=′
-  syntax match texCmdLigature "\%#=1\\i\>"  conceal cchar=ı
-  syntax match texCmdLigature "\%#=1\\j\>"  conceal cchar=ȷ
-  syntax match texCmdLigature "\%#=1\\AE\>" conceal cchar=Æ
-  syntax match texCmdLigature "\%#=1\\ae\>" conceal cchar=æ
-  syntax match texCmdLigature "\%#=1\\oe\>" conceal cchar=œ
-  syntax match texCmdLigature "\%#=1\\OE\>" conceal cchar=Œ
-  syntax match texCmdLigature "\%#=1\\o\>"  conceal cchar=ø
-  syntax match texCmdLigature "\%#=1\\O\>"  conceal cchar=Ø
-  syntax match texCmdLigature "\%#=1\\aa\>" conceal cchar=å
-  syntax match texCmdLigature "\%#=1\\AA\>" conceal cchar=Å
-  syntax match texCmdLigature "\%#=1\\ss\>" conceal cchar=ß
+  syntax match texCmdLigature "\%#=1\\lq\>\s*" conceal cchar=‘
+  syntax match texCmdLigature "\%#=1\\rq\>\s*" conceal cchar=′
+  syntax match texCmdLigature "\%#=1\\i\>\s*"  conceal cchar=ı
+  syntax match texCmdLigature "\%#=1\\j\>\s*"  conceal cchar=ȷ
+  syntax match texCmdLigature "\%#=1\\AE\>\s*" conceal cchar=Æ
+  syntax match texCmdLigature "\%#=1\\ae\>\s*" conceal cchar=æ
+  syntax match texCmdLigature "\%#=1\\oe\>\s*" conceal cchar=œ
+  syntax match texCmdLigature "\%#=1\\OE\>\s*" conceal cchar=Œ
+  syntax match texCmdLigature "\%#=1\\o\>\s*"  conceal cchar=ø
+  syntax match texCmdLigature "\%#=1\\O\>\s*"  conceal cchar=Ø
+  syntax match texCmdLigature "\%#=1\\aa\>\s*" conceal cchar=å
+  syntax match texCmdLigature "\%#=1\\AA\>\s*" conceal cchar=Å
+  syntax match texCmdLigature "\%#=1\\ss\>\s*" conceal cchar=ß
+  syntax match texCmdLigature "\%#=1\\dj\>\s*" conceal cchar=đ
+  syntax match texCmdLigature "\%#=1\\DJ\>\s*" conceal cchar=Đ
   syntax match texLigature    "--"     conceal cchar=–
   syntax match texLigature    "---"    conceal cchar=—
   syntax match texLigature    "`"      conceal cchar=‘

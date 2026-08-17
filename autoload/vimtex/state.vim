@@ -297,7 +297,7 @@ endfunction
 
 " }}}1
 function! s:get_main_from_texroot() abort " {{{1
-  for l:line in getline(1, 5)
+  for l:line in getline(1, 20)
     let l:file_pattern = matchstr(l:line, g:vimtex#re#tex_input_root)
     if empty(l:file_pattern) | continue | endif
 
@@ -318,7 +318,7 @@ endfunction
 
 " }}}1
 function! s:get_main_from_subfile() abort " {{{1
-  for l:line in getline(1, 5)
+  for l:line in getline(1, 20)
     let l:filename = matchstr(l:line,
           \ '^\C\s*\\documentclass\[\zs.*\ze\]{subfiles}')
     if len(l:filename) > 0
@@ -480,6 +480,8 @@ function! s:get_main_choose(list) abort " {{{1
     return l:existing[l:alternate_id]
   elseif len(l:existing) < 1 && len(l:new) == 1
     return l:new[0]
+  elseif g:vimtex_main_choose_first
+    return l:list[0]
   else
     let l:choices = {}
     for l:tex in l:list
@@ -568,7 +570,7 @@ endfunction
 " }}}1
 
 function! s:check_standalone() abort " {{{1
-  return match(getline(1, 5),
+  return match(getline(1, 20),
         \      '\v^\C\s*\\documentclass%(\[.*\])?\{standalone\}') >= 0
 endfunction
 
